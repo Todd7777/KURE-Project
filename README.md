@@ -204,9 +204,3 @@ MIT License - see LICENSE file for details.
 ## Contributing
 
 We welcome contributions! Please see CONTRIBUTING.md for guidelines.
-
-## 📧 Contact
-
-Todd Y. Zhou - [your-email@example.com]
-
-Project Link: [https://github.com/yourusername/nonlinear-rectified-flows](https://github.com/yourusername/nonlinear-rectified-flows)
