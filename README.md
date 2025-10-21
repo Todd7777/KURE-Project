@@ -12,9 +12,7 @@
 
 > *When AI image generation fails, it falters on multi-object composition, attribute binding, spatial relations, and explicit negation. We replace linear rectified flow teachers with geometry-aware nonlinear alternatives to preserve few-step efficiency while improving prompt faithfulness.*
 
-[**Paper**](https://arxiv.org/abs/XXXX.XXXXX) | [**Project Page**](https://todd7777.github.io/KURE-Project) | [**Demo**](https://huggingface.co/spaces/Todd7777/nrf-demo) | [**Colab**](https://colab.research.google.com/github/Todd7777/KURE-Project/blob/main/notebooks/demo.ipynb)
-
-## 🚀 Key Innovations
+## Key Innovations
 
 ### 1. **Geometry-Aware Teachers**
 - **Quadratic Teacher**: Minimal curved departure with early-late semantic shift absorption
@@ -98,7 +96,7 @@ nrf_project/
 └── README.md
 ```
 
-## 🎯 Quick Start
+## Quick Start
 
 ### Training
 
@@ -195,26 +193,15 @@ K_lr = K[:, landmarks] @ (K[landmarks, landmarks]^-1) @ K[landmarks, :]
 
 The resulting time-varying drift `u_t^*` serves as supervision.
 
-## 📝 Citation
-
-```bibtex
-@inproceedings{zhou2025nonlinear,
-  title={Nonlinear Rectified Flows for AI Image Generation},
-  author={Zhou, Todd Y.},
-  booktitle={Advances in Neural Information Processing Systems},
-  year={2025}
-}
-```
-
-## 🙏 Acknowledgments
+## Acknowledgments
 
 This research was supported by the Kempner Undergraduate Research Experience (KURE) at Harvard University. We thank the Kempner Institute for providing computational resources and the vibrant research community.
 
-## 📄 License
+## License
 
 MIT License - see LICENSE file for details.
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see CONTRIBUTING.md for guidelines.
 
