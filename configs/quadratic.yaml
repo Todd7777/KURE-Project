@@ -1,0 +1,22 @@
+# Configuration for Quadratic Teacher
+
+# Inherit from base
+_base_: "base.yaml"
+
+# Teacher configuration
+teacher:
+  type: "quadratic"
+  alpha: 0.5  # Curvature parameter
+  learnable: false  # Whether to learn alpha
+  alpha_schedule: null  # constant, increasing, decreasing
+  adaptive: false  # Use adaptive (context-dependent) alpha
+  alpha_min: -0.5  # For adaptive teacher
+  alpha_max: 1.0   # For adaptive teacher
+
+# Training configuration
+training:
+  num_epochs: 100
+  batch_size: 64
+  learning_rate: 1.0e-4
+  reg_weight: 0.01  # Regularization on alpha
+  run_name: "nrf_quadratic"

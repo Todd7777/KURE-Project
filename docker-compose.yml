@@ -1,0 +1,132 @@
+version: '3.8'
+
+services:
+  # Development environment
+  dev:
+    build:
+      context: .
+      target: development
+    image: nrf:dev
+    container_name: nrf-dev
+    volumes:
+      - .:/workspace
+      - nrf-cache:/root/.cache
+    environment:
+      - CUDA_VISIBLE_DEVICES=0,1,2,3
+      - WANDB_API_KEY=${WANDB_API_KEY}
+      - HF_TOKEN=${HF_TOKEN}
+    runtime: nvidia
+    shm_size: 16gb
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+
+  # Training service
+  train:
+    build:
+      context: .
+      target: production
+    image: nrf:train
+    container_name: nrf-train
+    volumes:
+      - ./data:/app/data:ro
+      - ./checkpoints:/app/checkpoints
+      - ./logs:/app/logs
+      - ./configs:/app/configs:ro
+    environment:
+      - CUDA_VISIBLE_DEVICES=0,1,2,3
+      - WANDB_API_KEY=${WANDB_API_KEY}
+      - WANDB_PROJECT=nonlinear-rectified-flows
+    runtime: nvidia
+    shm_size: 32gb
+    command: >
+      python scripts/train.py
+      --config configs/spline.yaml
+      --gpus 4
+
+  # Evaluation service
+  eval:
+    build:
+      context: .
+      target: production
+    image: nrf:eval
+    container_name: nrf-eval
+    volumes:
+      - ./data:/app/data:ro
+      - ./checkpoints:/app/checkpoints:ro
+      - ./results:/app/results
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    runtime: nvidia
+    command: >
+      python scripts/evaluate.py
+      --checkpoint checkpoints/nrf_spline_best.pt
+      --dataset coco
+      --steps "1 2 4 8"
+
+  # Inference service
+  inference:
+    build:
+      context: .
+      target: inference
+    image: nrf:inference
+    container_name: nrf-inference
+    volumes:
+      - ./checkpoints:/app/checkpoints:ro
+      - ./outputs:/app/outputs
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+    runtime: nvidia
+    ports:
+      - "8000:8000"
+    command: >
+      python scripts/sample.py
+      --checkpoint checkpoints/nrf_spline_best.pt
+      --prompt "A red cube on top of a blue sphere"
+      --steps 4
+      --num_samples 16
+
+  # Jupyter notebook service
+  jupyter:
+    build:
+      context: .
+      target: development
+    image: nrf:jupyter
+    container_name: nrf-jupyter
+    volumes:
+      - .:/workspace
+      - nrf-cache:/root/.cache
+    environment:
+      - CUDA_VISIBLE_DEVICES=0,1
+      - WANDB_API_KEY=${WANDB_API_KEY}
+    runtime: nvidia
+    ports:
+      - "8888:8888"
+    command: >
+      jupyter notebook
+      --ip=0.0.0.0
+      --port=8888
+      --no-browser
+      --allow-root
+      --NotebookApp.token=''
+
+  # Testing service
+  test:
+    build:
+      context: .
+      target: development
+    image: nrf:test
+    container_name: nrf-test
+    volumes:
+      - .:/workspace
+    command: >
+      pytest tests/
+      -v
+      --cov=src
+      --cov-report=html
+      --cov-report=term
+      -n auto
+
+volumes:
+  nrf-cache:
+    driver: local

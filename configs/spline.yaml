@@ -1,0 +1,26 @@
+# Configuration for Cubic Spline Teacher
+
+# Inherit from base
+_base_: "base.yaml"
+
+# Teacher configuration
+teacher:
+  type: "cubic_spline"
+  num_control_points: 3  # Number of intermediate control points
+  hidden_dim: 512  # Hidden dimension for controller network
+  
+  # Regularization weights
+  path_length_weight: 0.1  # Penalize long paths
+  curvature_weight: 0.05   # Penalize high curvature
+  control_point_weight: 0.01  # Penalize large control point magnitudes
+
+# Training configuration
+training:
+  num_epochs: 120
+  batch_size: 48  # Slightly smaller due to controller overhead
+  learning_rate: 1.0e-4
+  reg_weight: 0.1  # Higher regularization for spline
+  run_name: "nrf_cubic_spline"
+  
+  # May need more training for controller to converge
+  val_interval: 500

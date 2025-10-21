@@ -1,0 +1,35 @@
+# Configuration for Schrödinger Bridge Teacher
+
+# Inherit from base
+_base_: "base.yaml"
+
+# Teacher configuration
+teacher:
+  type: "schrodinger_bridge"
+  
+  # Drift network configuration
+  time_embed_dim: 256
+  hidden_channels: 256
+  
+  # Optimal transport solver configuration
+  epsilon: 0.1  # Entropic regularization parameter
+  num_iterations: 20  # Sinkhorn iterations
+  num_landmarks: 128  # Nyström landmarks for scalability
+  
+  # Training configuration
+  num_time_steps: 10  # Time discretization for OT
+  update_frequency: 100  # How often to recompute OT solution
+
+# Training configuration
+training:
+  num_epochs: 150  # SB may need more epochs
+  batch_size: 32  # Smaller batch due to OT computation
+  learning_rate: 5.0e-5  # Lower LR for stability
+  reg_weight: 0.01
+  run_name: "nrf_schrodinger_bridge"
+  
+  # More frequent validation due to complexity
+  val_interval: 500
+  
+  # Gradient clipping important for SB
+  grad_clip: 0.5
