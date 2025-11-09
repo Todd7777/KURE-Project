@@ -2,6 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch 2.0+](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![Modal](https://img.shields.io/badge/Modal-Deploy-brightgreen.svg)](https://modal.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![CI](https://github.com/Todd7777/KURE-Project/workflows/CI/badge.svg)](https://github.com/Todd7777/KURE-Project/actions)
 [![codecov](https://codecov.io/gh/Todd7777/KURE-Project/branch/main/graph/badge.svg)](https://codecov.io/gh/Todd7777/KURE-Project)
@@ -33,10 +34,40 @@
 
 ## 📦 Installation
 
+### 🚀 Option 1: Modal Deployment (Recommended)
+
+**No local setup required! Run on cloud GPUs instantly.**
+
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/nonlinear-rectified-flows.git
-cd nonlinear-rectified-flows
+git clone https://github.com/Todd7777/KURE-Project.git
+cd KURE-Project
+
+# One-command deployment to Modal
+python deploy_to_modal.py
+
+# Start generating images immediately
+python run_inference.py --prompt "A futuristic city at sunset"
+
+# Train models on cloud GPUs
+python run_training.py --config quadratic --gpus 4
+```
+
+**Features:**
+- 🎨 **Web Interface**: User-friendly UI for image generation
+- ⚡ **GPU Optimized**: A100 for training, T4 for inference
+- 💾 **Persistent Storage**: Automatic model and output management
+- 💰 **Cost Effective**: Pay only for what you use (~$0.10-0.50 per 100 images)
+- 📚 **Zero Setup**: No local dependencies or GPU required
+
+👉 **[See Modal Deployment Guide](MODAL_DEPLOYMENT.md)** for detailed instructions.
+
+### 🏠 Option 2: Local Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/Todd7777/KURE-Project.git
+cd KURE-Project
 
 # Create conda environment
 conda create -n nrf python=3.10
@@ -98,8 +129,46 @@ nrf_project/
 
 ## Quick Start
 
-### Training
+### 🚀 Modal (Cloud) - Recommended
 
+**Training:**
+```bash
+# Train with quadratic teacher (fast)
+python run_training.py --config quadratic --gpus 1
+
+# Train with cubic spline teacher (best quality)
+python run_training.py --config spline --gpus 4
+
+# Train with Schrödinger Bridge teacher (research)
+python run_training.py --config sb --gpus 8
+```
+
+**Image Generation:**
+```bash
+# Quick generation
+python run_inference.py --prompt "A red cube on top of a blue sphere"
+
+# High quality generation
+python run_inference.py --prompt "A futuristic city" --steps 8 --num-samples 16
+
+# Batch generation
+python run_inference.py --prompt "Abstract art" --num-samples 32
+```
+
+**Evaluation:**
+```bash
+# Evaluate model performance
+python run_evaluation.py --checkpoint /models/nrf_spline_best.pt --dataset coco
+
+# Compositional evaluation
+python run_evaluation.py --checkpoint /models/nrf_spline_best.pt --dataset compositional
+```
+
+**Web Interface:** Access directly from Modal dashboard after deployment!
+
+### 🏠 Local Installation
+
+**Training:**
 ```bash
 # Train with quadratic teacher
 python scripts/train.py --config configs/quadratic.yaml --gpus 4
@@ -111,8 +180,7 @@ python scripts/train.py --config configs/spline.yaml --gpus 4
 python scripts/train.py --config configs/sb.yaml --gpus 8
 ```
 
-### Sampling
-
+**Sampling:**
 ```bash
 # Generate images with 4-step sampling
 python scripts/sample.py \
@@ -122,8 +190,7 @@ python scripts/sample.py \
     --num_samples 16
 ```
 
-### Evaluation
-
+**Evaluation:**
 ```bash
 # Evaluate on COCO captions
 python scripts/evaluate.py \

@@ -1,0 +1,64 @@
+name: Modal Deployment Test
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'modal_*.py'
+      - 'run_*.py'
+      - 'deploy_to_modal.py'
+      - '.github/workflows/modal-test.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'modal_*.py'
+      - 'run_*.py'
+      - 'deploy_to_modal.py'
+
+jobs:
+  test-modal-setup:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install modal pytest
+        pip install -r modal_requirements.txt
+    
+    - name: Test Modal app syntax
+      run: |
+        python -m py_compile modal_app.py
+        python -m py_compile modal_web_interface.py
+        python -m py_compile deploy_to_modal.py
+    
+    - name: Test runner scripts syntax
+      run: |
+        python -m py_compile run_training.py
+        python -m py_compile run_inference.py
+        python -m py_compile run_evaluation.py
+        python -m py_compile setup_modal_secrets.py
+    
+    - name: Run deployment tests
+      run: |
+        python test_modal_deployment.py
+    
+    - name: Validate Modal app structure
+      run: |
+        python -c "
+        from modal_app import app, train_nrf_model, generate_images, evaluate_model
+        print('✅ Modal app structure is valid')
+        "
+    
+    - name: Check documentation
+      run: |
+        test -f MODAL_DEPLOYMENT.md
+        test -f README_MODAL.md
+        echo '✅ Documentation files exist'
