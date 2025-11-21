@@ -14,12 +14,13 @@ import torch.nn as nn
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.cuda.amp import autocast, GradScaler
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import os
 from pathlib import Path
 import wandb
 from tqdm import tqdm
 import time
+import clip
 
 
 class NRFTrainer:
@@ -93,8 +94,10 @@ class NRFTrainer:
         # Scheduler
         self.scheduler = scheduler
         
-        # Mixed precision
-        self.scaler = GradScaler() if use_amp else None
+        # Mixed precision (only for CUDA)
+        self.scaler = GradScaler() if (use_amp and torch.cuda.is_available()) else None
+        if use_amp and not torch.cuda.is_available():
+            self.use_amp = False  # Disable AMP on non-CUDA devices
         
         # Training state
         self.global_step = 0
@@ -109,6 +112,17 @@ class NRFTrainer:
         # Checkpoint directory
         self.checkpoint_dir = Path(self.config.get("checkpoint_dir", "checkpoints"))
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize CLIP model for text embeddings (if needed)
+        self.clip_model = None
+        self.clip_device = device if "cuda" in device else "cpu"
+        try:
+            self.clip_model, _ = clip.load("ViT-B/32", device=self.clip_device)
+            self.clip_model.eval()
+        except Exception as e:
+            if self.rank == 0:
+                print(f"Warning: Could not load CLIP model: {e}")
+                print("Text embeddings must be provided in batch['text_embedding']")
         
         # Initialize wandb
         if self.rank == 0 and self.config.get("use_wandb", False):
@@ -139,13 +153,22 @@ class NRFTrainer:
             mean, logvar = self.vae.encode(images)
             x_1 = self.vae.reparameterize(mean, logvar)
         
-        # Get text embeddings (assuming they're precomputed)
+        # Get text embeddings
         context = batch.get("text_embedding", None)
-        if context is not None:
+        if context is None and captions is not None and self.clip_model is not None:
+            # Compute CLIP embeddings from captions
+            with torch.no_grad():
+                if isinstance(captions, list):
+                    tokens = clip.tokenize(captions, truncate=True).to(self.clip_device)
+                    context = self.clip_model.encode_text(tokens).to(self.device)
+                else:
+                    # Handle tensor captions (shouldn't happen, but just in case)
+                    context = None
+        elif context is not None:
             context = context.to(self.device)
         
-        # Forward pass with mixed precision
-        with autocast(enabled=self.use_amp):
+        # Forward pass with mixed precision (only for CUDA)
+        with autocast(enabled=(self.use_amp and torch.cuda.is_available())):
             loss, metrics = self.model.compute_loss(
                 x_1,
                 context=context,
@@ -212,8 +235,16 @@ class NRFTrainer:
         
         for batch in tqdm(self.val_loader, desc="Validation", disable=self.rank != 0):
             images = batch["image"].to(self.device)
+            # Get text embeddings
             context = batch.get("text_embedding", None)
-            if context is not None:
+            captions = batch.get("caption", None)
+            if context is None and captions is not None and self.clip_model is not None:
+                # Compute CLIP embeddings from captions
+                with torch.no_grad():
+                    if isinstance(captions, list):
+                        tokens = clip.tokenize(captions, truncate=True).to(self.clip_device)
+                        context = self.clip_model.encode_text(tokens).to(self.device)
+            elif context is not None:
                 context = context.to(self.device)
             
             # Encode to latent
@@ -221,7 +252,7 @@ class NRFTrainer:
             x_1 = self.vae.reparameterize(mean, logvar)
             
             # Compute loss
-            with autocast(enabled=self.use_amp):
+            with autocast(enabled=(self.use_amp and torch.cuda.is_available())):
                 loss, metrics = self.model.compute_loss(
                     x_1,
                     context=context,

@@ -1,13 +1,8 @@
-"""
-Training utilities for Nonlinear Rectified Flows.
-"""
+"""Training utilities"""
 
-from .trainer import NRFTrainer, setup_distributed, cleanup_distributed
-
-__all__ = [
-    "NRFTrainer",
-    "setup_distributed",
-    "cleanup_distributed",
-]
-
+try:
+    from .trainer import NRFTrainer, setup_distributed, cleanup_distributed
+    __all__ = ["NRFTrainer", "setup_distributed", "cleanup_distributed"]
+except ImportError:
+    __all__ = []
 

@@ -1,17 +1,9 @@
-"""
-Model architectures for Nonlinear Rectified Flows.
-"""
+"""Model definitions"""
 
-from .nrf_base import NonlinearRectifiedFlow, TimeScheduler
-from .unet import UNetVelocityPredictor
-from .vae import create_vae, PullbackMetricVAE
-
-__all__ = [
-    "NonlinearRectifiedFlow",
-    "TimeScheduler",
-    "UNetVelocityPredictor",
-    "create_vae",
-    "PullbackMetricVAE",
-]
-
+try:
+    from . import nrf_base
+    from . import unet
+    from . import vae
+except ImportError:
+    pass
 

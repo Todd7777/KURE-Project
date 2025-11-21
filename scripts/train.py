@@ -14,6 +14,8 @@ from torch.utils.data import DataLoader
 import argparse
 import yaml
 from pathlib import Path
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="pydantic")
 
 from models.nrf_base import NonlinearRectifiedFlow, TimeScheduler
 from models.teachers.linear import LinearTeacher
@@ -28,6 +30,25 @@ from models.unet import UNetVelocityPredictor
 from models.vae import create_vae
 from training.trainer import NRFTrainer, setup_distributed, cleanup_distributed
 from data.datasets import create_dataloader
+
+
+def load_config(config_path: str) -> dict:
+    """Load YAML config with support for _base_ inheritance"""
+    config_path = Path(config_path)
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    
+    # Handle base config inheritance
+    if "_base_" in config:
+        base_path = config_path.parent / config["_base_"]
+        base_config = load_config(base_path)
+        # Merge: base config first, then override with current config
+        merged = {**base_config, **config}
+        # Remove _base_ key
+        merged.pop("_base_", None)
+        return merged
+    
+    return config
 
 
 def create_teacher(config: dict, device: str):
@@ -95,9 +116,8 @@ def create_teacher(config: dict, device: str):
 def main(args):
     """Main training function"""
     
-    # Load config
-    with open(args.config, "r") as f:
-        config = yaml.safe_load(f)
+    # Load config with inheritance support
+    config = load_config(args.config)
     
     # Setup distributed training
     rank, world_size, local_rank = setup_distributed()
