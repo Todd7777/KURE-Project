@@ -8,9 +8,8 @@ import sys
 
 def main():
     parser = argparse.ArgumentParser(description="Run NRF training on Modal")
-    parser.add_argument("--config", default="quadratic", 
-                       choices=["quadratic", "spline", "sb"],
-                       help="Configuration to use")
+    parser.add_argument("--config", default="quadratic",
+                       help="Configuration name (e.g., 'quadratic', 'spline', 'sb', or a custom name like 'quadratic_coco')")
     parser.add_argument("--gpus", type=int, default=1,
                        help="Number of GPUs to use")
     parser.add_argument("--wandb-project", default="kure-nrf",

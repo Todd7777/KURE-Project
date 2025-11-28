@@ -314,9 +314,13 @@ class UpBlock(nn.Module):
         x = self.upsample(x)
         
         for i, res_block in enumerate(self.res_blocks):
-            # Concatenate skip connection
-            if i < len(skips):
-                x = torch.cat([x, skips[-(i+1)]], dim=1)
+            # Concatenate skip connection only for the first residual layer in this block.
+            # ResidualBlock channels are configured as (in_channels + out_channels) for i == 0
+            # and out_channels thereafter, so we must not keep concatenating on later layers.
+            if i == 0 and len(skips) > 0:
+                x = torch.cat([x, skips[-1]], dim=1)
+                # Remove the skip we just used so each UpBlock stage consumes one skip set
+                skips = skips[:-1]
             
             x = res_block(x, t_emb)
             

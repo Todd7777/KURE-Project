@@ -160,8 +160,13 @@ models_volume = modal.Volume.from_name("kure-models", create_if_missing=True)
 datasets_volume = modal.Volume.from_name("kure-datasets", create_if_missing=True)
 outputs_volume = modal.Volume.from_name("kure-outputs", create_if_missing=True)
 
+<<<<<<< HEAD
 # Cache volume for git repos and downloaded data
 cache_volume = modal.Volume.from_name("kure-cache", create_if_missing=True)
+=======
+# GPU configuration for training (use T4 to minimize cost by default)
+GPU_CONFIG = modal.gpu.T4()  # Can be changed to A100 for larger runs
+>>>>>>> 95fa1d5 (Fix UNet upsampling skip-concat bug; add cheap Modal training helper and config flexibility)
 
 # Helper function to setup project with volume caching
 def setup_project_cached(repo_url="https://github.com/Todd7777/KURE-Project.git"):
@@ -569,6 +574,113 @@ def train_nrf_model(
     checkpoint_dir = "/models/checkpoints"
     os.makedirs(checkpoint_dir, exist_ok=True)
     print(f"Checkpoints will be saved to: {checkpoint_dir} (persisted in volume)")
+    
+    # Ensure minimal augmentation module exists to avoid import errors
+    try:
+        aug_path = Path("src/data/augmentation.py")
+        if not aug_path.exists():
+            aug_path.parent.mkdir(parents=True, exist_ok=True)
+            aug_path.write_text(
+                """
+import torchvision.transforms as transforms
+
+def get_transforms(image_size: int = 256, is_train: bool = True):
+    if is_train:
+        return transforms.Compose([
+            transforms.Resize((image_size, image_size)),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+        ])
+    else:
+        return transforms.Compose([
+            transforms.Resize((image_size, image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+        ])
+"""
+            )
+    except Exception as e:
+        print(f"Warning: could not create augmentation.py: {e}")
+
+    # Create a tiny synthetic COCO-like dataset to avoid large downloads
+    try:
+        import json
+        from PIL import Image
+        import numpy as np
+        data_root = Path("data/coco")
+        for split in ["train", "val"]:
+            img_dir = data_root / "images" / ("train2017" if split == "train" else "val2017")
+            ann_dir = data_root / "annotations"
+            img_dir.mkdir(parents=True, exist_ok=True)
+            ann_dir.mkdir(parents=True, exist_ok=True)
+            # Create a few colored square images
+            images = []
+            annotations = []
+            for i in range(1, 6):
+                rng = np.random.default_rng(i)
+                color = (int(rng.integers(0,255)), int(rng.integers(0,255)), int(rng.integers(0,255)))
+                arr = np.zeros((256, 256, 3), dtype=np.uint8)
+                arr[:, :] = color
+                fname = f"{split}_{i:06d}.jpg"
+                Image.fromarray(arr).save(img_dir / fname)
+                images.append({"id": i, "file_name": fname, "width": 256, "height": 256})
+                annotations.append({"id": i, "image_id": i, "caption": f"A solid color image {color}."})
+            coco_ann = {
+                "images": images,
+                "annotations": annotations,
+                "info": {},
+                "licenses": [],
+                "type": "captions",
+            }
+            ann_file = ann_dir / ("captions_train2017.json" if split == "train" else "captions_val2017.json")
+            with open(ann_file, "w") as f:
+                json.dump(coco_ann, f)
+    except Exception as e:
+        print(f"Warning: could not create tiny COCO dataset: {e}")
+
+    # Ensure a small COCO config exists for cheap runs
+    try:
+        cfg_dir = Path("configs")
+        cfg_dir.mkdir(exist_ok=True)
+        qc_path = cfg_dir / "quadratic_coco.yaml"
+        if not qc_path.exists():
+            qc_path.write_text(
+                """
+# Quadratic teacher on COCO (tiny run)
+_base_: "base.yaml"
+
+teacher:
+  type: "quadratic"
+  alpha: 0.5
+  learnable: false
+
+data:
+  dataset: "coco"
+  image_size: 256
+  in_channels: 3
+  num_workers: 2
+  use_validation: true
+
+training:
+  num_epochs: 1
+  batch_size: 2
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-4
+  betas: [0.9, 0.999]
+  min_lr: 1.0e-6
+  ema_decay: 0.9999
+  log_interval: 10
+  val_interval: 50
+  save_interval: 1000
+  checkpoint_dir: "checkpoints"
+  use_amp: true
+  use_wandb: false
+  run_name: "nrf_quadratic_coco_tiny"
+"""
+            )
+    except Exception as e:
+        print(f"Warning: could not create quadratic_coco.yaml: {e}")
     
     # Set up environment variables
     os.environ["WANDB_PROJECT"] = wandb_project
